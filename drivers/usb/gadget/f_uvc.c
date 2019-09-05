@@ -28,6 +28,8 @@
 
 #include "uvc.h"
 
+#define UVC_NO_INTERRUPT_EP 1
+
 unsigned int uvc_gadget_trace_param;
 
 /*-------------------------------------------------------------------------*/
@@ -74,8 +76,11 @@ static struct usb_gadget_strings *uvc_function_strings[] = {
 #define UVC_INTF_VIDEO_STREAMING		1
 
 #define UVC_STATUS_MAX_PACKET_SIZE		16	/* 16 bytes status */
-
+#ifdef CONFIG_USB_G_ANDROID
+static struct usb_interface_assoc_descriptor uvc_iad = {
+#else
 static struct usb_interface_assoc_descriptor uvc_iad __initdata = {
+#endif
 	.bLength		= sizeof(uvc_iad),
 	.bDescriptorType	= USB_DT_INTERFACE_ASSOCIATION,
 	.bFirstInterface	= 0,
@@ -85,20 +90,30 @@ static struct usb_interface_assoc_descriptor uvc_iad __initdata = {
 	.bFunctionProtocol	= 0x00,
 	.iFunction		= 0,
 };
-
+#ifdef CONFIG_USB_G_ANDROID
+static struct usb_interface_descriptor uvc_control_intf = {
+#else
 static struct usb_interface_descriptor uvc_control_intf __initdata = {
+#endif
 	.bLength		= USB_DT_INTERFACE_SIZE,
 	.bDescriptorType	= USB_DT_INTERFACE,
 	.bInterfaceNumber	= UVC_INTF_VIDEO_CONTROL,
 	.bAlternateSetting	= 0,
+#ifndef UVC_NO_INTERRUPT_EP
 	.bNumEndpoints		= 1,
+#endif
 	.bInterfaceClass	= USB_CLASS_VIDEO,
 	.bInterfaceSubClass	= UVC_SC_VIDEOCONTROL,
 	.bInterfaceProtocol	= 0x00,
 	.iInterface		= 0,
 };
 
+#ifndef UVC_NO_INTERRUPT_EP
+#ifdef CONFIG_USB_G_ANDROID
+static struct usb_endpoint_descriptor uvc_control_ep  = {
+#else
 static struct usb_endpoint_descriptor uvc_control_ep __initdata = {
+#endif
 	.bLength		= USB_DT_ENDPOINT_SIZE,
 	.bDescriptorType	= USB_DT_ENDPOINT,
 	.bEndpointAddress	= USB_DIR_IN,
@@ -106,8 +121,12 @@ static struct usb_endpoint_descriptor uvc_control_ep __initdata = {
 	.wMaxPacketSize		= cpu_to_le16(UVC_STATUS_MAX_PACKET_SIZE),
 	.bInterval		= 8,
 };
-
+#endif
+#ifdef CONFIG_USB_G_ANDROID
+static struct usb_ss_ep_comp_descriptor uvc_ss_control_comp = {
+#else
 static struct usb_ss_ep_comp_descriptor uvc_ss_control_comp __initdata = {
+#endif
 	.bLength		= sizeof(uvc_ss_control_comp),
 	.bDescriptorType	= USB_DT_SS_ENDPOINT_COMP,
 	/* The following 3 values can be tweaked if necessary. */
@@ -115,15 +134,21 @@ static struct usb_ss_ep_comp_descriptor uvc_ss_control_comp __initdata = {
 	.bmAttributes		= 0,
 	.wBytesPerInterval	= cpu_to_le16(UVC_STATUS_MAX_PACKET_SIZE),
 };
-
+#ifdef CONFIG_USB_G_ANDROID
+static struct uvc_control_endpoint_descriptor uvc_control_cs_ep  = {
+#else
 static struct uvc_control_endpoint_descriptor uvc_control_cs_ep __initdata = {
+#endif
 	.bLength		= UVC_DT_CONTROL_ENDPOINT_SIZE,
 	.bDescriptorType	= USB_DT_CS_ENDPOINT,
 	.bDescriptorSubType	= UVC_EP_INTERRUPT,
 	.wMaxTransferSize	= cpu_to_le16(UVC_STATUS_MAX_PACKET_SIZE),
 };
-
+#ifdef CONFIG_USB_G_ANDROID
+static struct usb_interface_descriptor uvc_streaming_intf_alt0  = {
+#else
 static struct usb_interface_descriptor uvc_streaming_intf_alt0 __initdata = {
+#endif
 	.bLength		= USB_DT_INTERFACE_SIZE,
 	.bDescriptorType	= USB_DT_INTERFACE,
 	.bInterfaceNumber	= UVC_INTF_VIDEO_STREAMING,
@@ -134,8 +159,11 @@ static struct usb_interface_descriptor uvc_streaming_intf_alt0 __initdata = {
 	.bInterfaceProtocol	= 0x00,
 	.iInterface		= 0,
 };
-
+#ifdef CONFIG_USB_G_ANDROID
+static struct usb_interface_descriptor uvc_streaming_intf_alt1  = {
+#else
 static struct usb_interface_descriptor uvc_streaming_intf_alt1 __initdata = {
+#endif
 	.bLength		= USB_DT_INTERFACE_SIZE,
 	.bDescriptorType	= USB_DT_INTERFACE,
 	.bInterfaceNumber	= UVC_INTF_VIDEO_STREAMING,
@@ -146,8 +174,11 @@ static struct usb_interface_descriptor uvc_streaming_intf_alt1 __initdata = {
 	.bInterfaceProtocol	= 0x00,
 	.iInterface		= 0,
 };
-
+#ifdef CONFIG_USB_G_ANDROID
+static struct usb_endpoint_descriptor uvc_fs_streaming_ep  = {
+#else
 static struct usb_endpoint_descriptor uvc_fs_streaming_ep __initdata = {
+#endif
 	.bLength		= USB_DT_ENDPOINT_SIZE,
 	.bDescriptorType	= USB_DT_ENDPOINT,
 	.bEndpointAddress	= USB_DIR_IN,
@@ -159,8 +190,11 @@ static struct usb_endpoint_descriptor uvc_fs_streaming_ep __initdata = {
 	.wMaxPacketSize		= 0,
 	.bInterval		= 0,
 };
-
+#ifdef CONFIG_USB_G_ANDROID
+static struct usb_endpoint_descriptor uvc_hs_streaming_ep  = {
+#else
 static struct usb_endpoint_descriptor uvc_hs_streaming_ep __initdata = {
+#endif
 	.bLength		= USB_DT_ENDPOINT_SIZE,
 	.bDescriptorType	= USB_DT_ENDPOINT,
 	.bEndpointAddress	= USB_DIR_IN,
@@ -172,8 +206,11 @@ static struct usb_endpoint_descriptor uvc_hs_streaming_ep __initdata = {
 	.wMaxPacketSize		= 0,
 	.bInterval		= 0,
 };
-
+#ifdef CONFIG_USB_G_ANDROID
+static struct usb_endpoint_descriptor uvc_ss_streaming_ep  = {
+#else
 static struct usb_endpoint_descriptor uvc_ss_streaming_ep __initdata = {
+#endif
 	.bLength		= USB_DT_ENDPOINT_SIZE,
 	.bDescriptorType	= USB_DT_ENDPOINT,
 
@@ -186,8 +223,11 @@ static struct usb_endpoint_descriptor uvc_ss_streaming_ep __initdata = {
 	.wMaxPacketSize		= 0,
 	.bInterval		= 0,
 };
-
+#ifdef CONFIG_USB_G_ANDROID
+static struct usb_ss_ep_comp_descriptor uvc_ss_streaming_comp  = {
+#else
 static struct usb_ss_ep_comp_descriptor uvc_ss_streaming_comp __initdata = {
+#endif
 	.bLength		= sizeof(uvc_ss_streaming_comp),
 	.bDescriptorType	= USB_DT_SS_ENDPOINT_COMP,
 	/* The following 3 values can be tweaked if necessary. */
@@ -262,7 +302,6 @@ uvc_function_setup(struct usb_function *f, const struct usb_ctrlrequest *ctrl)
 	v4l2_event.type = UVC_EVENT_SETUP;
 	memcpy(&uvc_event->req, ctrl, sizeof(uvc_event->req));
 	v4l2_event_queue(uvc->vdev, &v4l2_event);
-
 	return 0;
 }
 
@@ -366,6 +405,7 @@ uvc_function_disable(struct usb_function *f)
 	struct v4l2_event v4l2_event;
 
 	INFO(f->config->cdev, "uvc_function_disable\n");
+	uvc_function_set_alt(f,  uvc->streaming_intf, 0);
 
 	memset(&v4l2_event, 0, sizeof(v4l2_event));
 	v4l2_event.type = UVC_EVENT_DISCONNECT;
@@ -440,8 +480,11 @@ uvc_register_video(struct uvc_device *uvc)
 			mem += (*__src)->bLength; \
 		} \
 	} while (0)
-
+#ifdef CONFIG_USB_G_ANDROID
+static struct usb_descriptor_header **
+#else
 static struct usb_descriptor_header ** __init
+#endif
 uvc_copy_descriptors(struct uvc_device *uvc, enum usb_device_speed speed)
 {
 	struct uvc_input_header_descriptor *uvc_streaming_header;
@@ -496,7 +539,10 @@ uvc_copy_descriptors(struct uvc_device *uvc, enum usb_device_speed speed)
 	control_size = 0;
 	streaming_size = 0;
 	bytes = uvc_iad.bLength + uvc_control_intf.bLength
-	      + uvc_control_ep.bLength + uvc_control_cs_ep.bLength
+#ifndef UVC_NO_INTERRUPT_EP
+	      + uvc_control_ep.bLength
+#endif
+	      + uvc_control_cs_ep.bLength
 	      + uvc_streaming_intf_alt0.bLength;
 
 	if (speed == USB_SPEED_SUPER) {
@@ -541,8 +587,9 @@ uvc_copy_descriptors(struct uvc_device *uvc, enum usb_device_speed speed)
 	uvc_control_header->wTotalLength = cpu_to_le16(control_size);
 	uvc_control_header->bInCollection = 1;
 	uvc_control_header->baInterfaceNr[0] = uvc->streaming_intf;
-
+#ifndef UVC_NO_INTERRUPT_EP
 	UVC_COPY_DESCRIPTOR(mem, dst, &uvc_control_ep);
+#endif
 	if (speed == USB_SPEED_SUPER)
 		UVC_COPY_DESCRIPTOR(mem, dst, &uvc_ss_control_comp);
 
@@ -569,8 +616,13 @@ uvc_function_unbind(struct usb_configuration *c, struct usb_function *f)
 
 	INFO(cdev, "uvc_function_unbind\n");
 
+	/*balance with the bind function*/
+	usb_function_activate(f);
+
 	video_unregister_device(uvc->vdev);
+#ifndef UVC_NO_INTERRUPT_EP
 	uvc->control_ep->driver_data = NULL;
+#endif
 	uvc->video.ep->driver_data = NULL;
 
 	uvc_en_us_strings[UVC_STRING_CONTROL_IDX].id = 0;
@@ -581,8 +633,11 @@ uvc_function_unbind(struct usb_configuration *c, struct usb_function *f)
 
 	kfree(uvc);
 }
-
+#ifdef CONFIG_USB_G_ANDROID
+static int
+#else
 static int __init
+#endif
 uvc_function_bind(struct usb_configuration *c, struct usb_function *f)
 {
 	struct usb_composite_dev *cdev = c->cdev;
@@ -632,6 +687,7 @@ uvc_function_bind(struct usb_configuration *c, struct usb_function *f)
 		max_packet_size * max_packet_mult * streaming_maxburst;
 
 	/* Allocate endpoints. */
+#ifndef UVC_NO_INTERRUPT_EP
 	ep = usb_ep_autoconfig(cdev->gadget, &uvc_control_ep);
 	if (!ep) {
 		INFO(cdev, "Unable to allocate control EP\n");
@@ -639,6 +695,7 @@ uvc_function_bind(struct usb_configuration *c, struct usb_function *f)
 	}
 	uvc->control_ep = ep;
 	ep->driver_data = uvc;
+#endif
 
 	if (gadget_is_superspeed(c->cdev->gadget))
 		ep = usb_ep_autoconfig_ss(cdev->gadget, &uvc_ss_streaming_ep,
@@ -714,9 +771,10 @@ uvc_function_bind(struct usb_configuration *c, struct usb_function *f)
 error:
 	if (uvc->vdev)
 		video_device_release(uvc->vdev);
-
+#ifndef UVC_NO_INTERRUPT_EP
 	if (uvc->control_ep)
 		uvc->control_ep->driver_data = NULL;
+#endif
 	if (uvc->video.ep)
 		uvc->video.ep->driver_data = NULL;
 
@@ -743,7 +801,11 @@ error:
  * Caller must have called @uvc_setup(). Caller is also responsible for
  * calling @uvc_cleanup() before module unload.
  */
+#ifdef CONFIG_USB_G_ANDROID
+int
+#else
 int __init
+#endif
 uvc_bind_config(struct usb_configuration *c,
 		const struct uvc_descriptor_header * const *fs_control,
 		const struct uvc_descriptor_header * const *ss_control,

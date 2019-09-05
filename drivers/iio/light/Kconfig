@@ -42,6 +42,12 @@ config SENSORS_TSL2563
 	 This driver can also be built as a module.  If so, the module
 	 will be called tsl2563.
 
+config SENSORS_LTR_303ALS_01
+	tristate "LTR-303ALS-01 light sensors"
+	depends on I2C
+	help
+	 If you say yes here you get support for the LTR-303ALS-01 light sensors.
+
 config VCNL4000
 	tristate "VCNL4000 combined ALS and proximity sensor"
 	depends on I2C

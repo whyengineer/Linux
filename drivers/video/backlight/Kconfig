@@ -148,6 +148,97 @@ config LCD_HX8357
 	  If you have a HX-8357 LCD panel, say Y to enable its LCD control
 	  driver.
 
+config LCD_BYD_8991FTGF
+	tristate "BYD 8991FTGF panel(480x800)"
+	depends on BACKLIGHT_CLASS_DEVICE
+	default n
+
+config LCD_KFM701A21_1A
+	tristate "KFM701A21_1A TFT Smart LCD panel(400x240)"
+	depends on BACKLIGHT_CLASS_DEVICE
+	default n
+	help
+	  If you have an KFM701A21_1A Panel, say Y to enable its
+	  control driver. The driver IC of this module is SPFD5420A.
+
+config LCD_BM8766
+	tristate "BM8766 TFT LCD panel(800x480)"
+	depends on BACKLIGHT_CLASS_DEVICE
+	default n
+
+config LCD_TRULY_TFT240240_2_E
+	tristate "SLCD TRULY TFT240240-2-E with control IC st7789s (240x240)"
+	depends on BACKLIGHT_CLASS_DEVICE
+	default n
+
+config LCD_KD035HVFMD057
+	tristate "SLCD STARTEK KD035HVFMD057 with control IC ILI9488 (320x480)"
+	depends on BACKLIGHT_CLASS_DEVICE
+	default n
+
+config LCD_NHD_160128UGC3
+	tristate "NHD 160128UGC3 with control IC seps525f (160x128)"
+	depends on BACKLIGHT_CLASS_DEVICE
+	default n
+
+config LCD_BYD_9177AA
+	tristate "byd 9177aa  mipi-dsi panel(540x960)"
+	depends on FB && JZ_MIPI_DSI
+	help
+	jz mipi dsi.dpi TFT display panel  support
+
+config LCD_STARTEK_KD050HDFIA019
+	tristate "startek kd050hdfia019 mipi-dsi panel(480x854)"
+	depends on FB && JZ_MIPI_DSI
+	help
+	jz mipi dsi.dpi TFT display panel  support
+
+config LCD_STARTEK_KD050HDFIA020
+	tristate "startek kd050hdfia020 mipi-dsi panel(720x1280)"
+	depends on FB && JZ_MIPI_DSI
+	help
+	jz mipi dsi.dpi TFT display panel  support
+
+config LCD_VISIONOX_T078ZC04H01
+	tristate "visionox t078zc04h01 mipi-dsi panel(400x1280)"
+	depends on FB && JZ_MIPI_DSI
+	help
+	jz mipi dsi.dpi TFT display panel  support
+
+config LCD_XINLI_X078DTLN06
+	tristate "xinli x078dtln06 mipi-dsi panel(400x1280)"
+	depends on FB && JZ_MIPI_DSI
+	help
+	jz mipi dsi.dpi TFT display panel  support
+
+config LCD_X163
+	tristate "X163 smart mipi-dsi panel(320x320)"
+	depends on JZ_MIPI_DSI
+	help
+	jz mipi dsi.dbi smart display panel support
+
+config SLCDC_USE_TE
+	tristate "SLCDC USE TE SIGNAL"
+	depends on BACKLIGHT_CLASS_DEVICE
+	default n
+
+config GPIO_SIMULATE
+	tristate "USE GPIO SIMULATE TO MCU INIT"
+	depends on LCD_TRULY_TFT240240_2_E || LCD_CV90_M5377_P30
+	default n
+
+config SLCDC_CONTINUA
+	tristate "SLCDC CONTINUA TRANFER"
+	depends on BACKLIGHT_CLASS_DEVICE
+	default n
+
+config AUO_X163_ROTATION_180
+	bool "AUO X163 rotation 180"
+	depends on LCD_X163
+	default n
+	help
+	  If your board is needed rotation 180, select this option.
+
 endif # LCD_CLASS_DEVICE
 
 #
@@ -261,10 +352,10 @@ config BACKLIGHT_CARILLO_RANCH
 
 config BACKLIGHT_PWM
 	tristate "Generic PWM based Backlight Driver"
-	depends on PWM
+	depends on PWM && JZ_PWM
 	help
 	  If you have a LCD backlight adjustable by PWM, say Y to enable
-	  this driver.
+	  this driver. Choice JZ PWM driver and the PWM channel.
 
 config BACKLIGHT_DA903X
 	tristate "Backlight Driver for DA9030/DA9034 using WLED"

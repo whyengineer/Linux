@@ -27,7 +27,7 @@ struct ethtool_cmd {
 				 * access it */
 	__u8	duplex;		/* Duplex, half or full */
 	__u8	port;		/* Which connector port */
-	__u8	phy_address;	/* MDIO PHY address (PRTAD for clause 45).
+	__u32	phy_address;	/* MDIO PHY address (PRTAD for clause 45).
 				 * May be read-only or read-write
 				 * depending on the driver.
 				 */

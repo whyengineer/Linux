@@ -53,6 +53,80 @@ config VIDEO_VIU
 	  Say Y here if you want to enable VIU device on MPC5121e Rev2+.
 	  In doubt, say N.
 
+config VIDEO_TX_ISP
+	  bool "TX ISP MODULE"
+	  select VIDEOBUF2_CORE
+	  select VIDEOBUF2_MEMOPS
+	  depends on VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
+	  ---help---
+	  Driver for TX ISP.
+
+if VIDEO_TX_ISP
+source "drivers/media/platform/lib-isp/Kconfig"
+endif #VIDEO_TX_ISP
+
+menuconfig VIDEO_INGENIC_VPU_FOR_V4L2
+	tristate "V4L2 driver for Ingenic VPU"
+	depends on VIDEO_DEV && VIDEO_V4L2
+
+config VIDEO_INGENIC_X1000_JPEG
+        depends on VIDEO_INGENIC_VPU_FOR_V4L2 && SOC_X1000
+	tristate "X1000 JPEG codec driver"
+	select VIDEOBUF2_DMA_CONTIG
+	select V4L2_MEM2MEM_DEV
+	---help---
+	  This is a v4l2 driver for Ingenic X1000 codec
+
+config VIDEO_OVISP
+	tristate "ingenic ovisp driver"
+	depends on VIDEO_DEV && VIDEO_V4L2
+	select VIDEOBUF2_DMA_CONTIG
+	select V4L2_MEM2MEM_DEV
+	help
+	  This is a v4l2 driver for Samsung EXYNOS5 SoC G-Scaler.
+
+config OVISP_I2C
+	bool "OVISP I2C"
+	depends on VIDEO_OVISP
+	---help---
+	USE ISP internal I2C.
+
+config DVP_CAMERA0
+    bool "select DVP interface camera and portC"
+	depends on VIDEO_OVISP && !FB_JZ_V1_2 && !JZ_EPD_GPIO_FUNCTION && SOC_M200
+	---help---
+	USE a camera of dvp interface.
+
+config MIPI_CAMERA
+    bool "select MIPI interface camera"
+	depends on VIDEO_OVISP && SOC_M200
+	---help---
+	USE a camera of mipi interface.
+choice
+	depends on MIPI_CAMERA
+		prompt "select mclk gpio"
+	default MCLK_GPIO_PE02
+config MCLK_GPIO_PE02
+	bool "select pe02 as mclk pin."
+config MCLK_GPIO_PD08
+	bool "select pD08 as mclk pin."
+config MCLK_GPIO_PC24
+	bool "select pc24 as mclk pin."
+endchoice
+
+config MIPI_CAMERA_BYPASS_MODE
+	bool "camera bypass mode"
+	depends on VIDEO_OVISP && SOC_M200
+	---help---
+	FOR select bypass mode with camera
+
+config FORMAT_REVERSE
+	bool "reverse yuv format"
+	depends on VIDEO_OVISP
+	---help---
+	reverse yuyv to uyuv
+
+
 config VIDEO_TIMBERDALE
 	tristate "Support for timberdale Video In/LogiWIN"
 	depends on VIDEO_V4L2 && I2C && DMADEVICES

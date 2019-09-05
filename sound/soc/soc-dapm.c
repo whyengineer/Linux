@@ -332,6 +332,22 @@ out:
 	return ret;
 }
 
+static inline unsigned int snd_soc_enum_val_to_item(struct soc_enum *e,
+                                                    unsigned int val)
+{
+        unsigned int i;
+
+        if (!e->values)
+                return val;
+
+        for (i = 0; i < e->max; i++)
+                if (val == e->values[i])
+                        return i;
+
+        return 0;
+}
+
+
 /* set up initial codec paths */
 static void dapm_set_path_status(struct snd_soc_dapm_widget *w,
 	struct snd_soc_dapm_path *p, int i)
@@ -360,12 +376,14 @@ static void dapm_set_path_status(struct snd_soc_dapm_widget *w,
 	case snd_soc_dapm_mux: {
 		struct soc_enum *e = (struct soc_enum *)
 			w->kcontrol_news[i].private_value;
-		int val, item;
+                int val, item;
 
-		val = soc_widget_read(w, e->reg);
-		item = (val >> e->shift_l) & e->mask;
+                val = soc_widget_read(w, e->reg);
+                val = (val >> e->shift_l) & e->mask;
+                item = snd_soc_enum_val_to_item(e, val);
 
 		p->connect = 0;
+
 		for (i = 0; i < e->max; i++) {
 			if (!(strcmp(p->name, e->texts[i])) && item == i)
 				p->connect = 1;

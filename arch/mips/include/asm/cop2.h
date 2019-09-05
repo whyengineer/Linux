@@ -11,6 +11,18 @@
 
 #include <linux/notifier.h>
 
+#if defined(CONFIG_XBURST_MXUV2)
+extern void xburst_cop2_save(struct xburst_cop2_state *);
+extern void xburst_cop2_restore(struct xburst_cop2_state *);
+#define cop2_save(r)		xburst_cop2_save(r)
+#define cop2_restore(r)		xburst_cop2_restore(r)
+#define cop2_lazy_restore	0
+#else
+#define cop2_save(r)
+#define cop2_restore(r)
+#define cop2_lazy_restore	0
+#endif
+
 enum cu2_ops {
 	CU2_EXCEPTION,
 	CU2_LWC2_OP,

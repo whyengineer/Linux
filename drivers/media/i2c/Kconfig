@@ -433,6 +433,17 @@ config VIDEO_APTINA_PLL
 config VIDEO_SMIAPP_PLL
 	tristate
 
+config VIDEO_OV2735B
+	tristate "OmniVision OV2735B sensor support"
+	depends on I2C && VIDEO_V4L2
+	depends on MEDIA_CAMERA_SUPPORT
+	---help---
+	  This is a Video4Linux2 sensor-level driver for the OmniVision
+	  OV2735B camera.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called OV2735B.
+
 config VIDEO_OV7640
 	tristate "OmniVision OV7640 sensor support"
 	depends on I2C && VIDEO_V4L2
@@ -443,6 +454,22 @@ config VIDEO_OV7640
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called ov7640.
+
+config VIDEO_OV5645
+	tristate "OmniVision OV5645 sensor support"
+	depends on I2C && VIDEO_V4L2
+	depends on MEDIA_CAMERA_SUPPORT
+	---help---
+	  This is a Video4Linux2 sensor-level driver for the OmniVision
+	  OV5645 camera.
+
+config VIDEO_OV9724
+	tristate "OmniVision OV9724 sensor support"
+	depends on I2C && VIDEO_V4L2
+	depends on MEDIA_CAMERA_SUPPORT
+	---help---
+	  This is a Video4Linux2 sensor-level driver for the OmniVision
+	  OV9724 camera.
 
 config VIDEO_OV7670
 	tristate "OmniVision OV7670 sensor support"

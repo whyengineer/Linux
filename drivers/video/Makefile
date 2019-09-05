@@ -12,9 +12,12 @@ fb-y                              := fbmem.o fbmon.o fbcmap.o fbsysfs.o \
                                      modedb.o fbcvt.o
 fb-objs                           := $(fb-y)
 
+obj-$(CONFIG_ADF)		  += adf/
 obj-$(CONFIG_VT)		  += console/
 obj-$(CONFIG_LOGO)		  += logo/
+obj-$(CONFIG_TRUE_COLOR_LOGO)	  += logo-ingenic/
 obj-y				  += backlight/
+
 
 obj-$(CONFIG_EXYNOS_VIDEO)     += exynos/
 
@@ -167,6 +170,15 @@ obj-$(CONFIG_FB_DA8XX)		  += da8xx-fb.o
 obj-$(CONFIG_FB_MXS)		  += mxsfb.o
 obj-$(CONFIG_FB_SSD1307)	  += ssd1307fb.o
 obj-$(CONFIG_FB_SIMPLE)           += simplefb.o
+obj-$(CONFIG_FB_JZ_V12)     	  += jz_fb_v12/
+obj-$(CONFIG_FB_JZ_V14)           += jz_fb_v14/
+obj-$(CONFIG_FB_MIPI_ONLY)     += jz_fb_mipi_only/
+obj-$(CONFIG_FB_JZ_V13)     	  += jz_fb_v13/
+obj-$(CONFIG_FB_JZ_V11)     	  += jz_fb_v11/
+obj-$(CONFIG_VFB_JZ) 		  		  +=jz_vfb/
+obj-$(CONFIG_JZ_VPU)             += jz_vpu/
+obj-$(CONFIG_SOC_VPU)             += soc_vpu/
+obj-$(CONFIG_JZ_IPU_V12)		  += jz_ipu/
 
 # the test framebuffer is last
 obj-$(CONFIG_FB_VIRTUAL)          += vfb.o
@@ -177,3 +189,4 @@ obj-$(CONFIG_VIDEOMODE_HELPERS) += display_timing.o videomode.o
 ifeq ($(CONFIG_OF),y)
 obj-$(CONFIG_VIDEOMODE_HELPERS) += of_display_timing.o of_videomode.o
 endif
+obj-$(CONFIG_DEFAULT_FB)           += default_fb.o

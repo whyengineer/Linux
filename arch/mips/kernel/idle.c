@@ -20,7 +20,10 @@
 #include <asm/cpu-info.h>
 #include <asm/idle.h>
 #include <asm/mipsregs.h>
-
+#include <asm/cacheops.h>
+#ifdef CONFIG_SOC_4780
+#include <rjzcache.h>
+#endif
 /*
  * Not all of the MIPS CPUs have the "wait" instruction available. Moreover,
  * the implementation of the "wait" feature differs between CPU families. This
@@ -30,6 +33,50 @@
  */
 void (*cpu_wait)(void);
 EXPORT_SYMBOL(cpu_wait);
+
+static void jz_wait_irqoff(void)
+{
+#define cache_prefetch(label)							\
+	do{													\
+		unsigned long addr,size,end;					\
+		/* Prefetch codes from label */					\
+		addr = (unsigned long)(&&label) & ~(32 - 1);	\
+		size = 32 * 6; /* load 128 cachelines */		\
+		end = addr + size;								\
+		for (; addr < end; addr += 32) {				\
+			__asm__ volatile (							\
+				".set push\n"							\
+				".set mips32\n\t"						\
+				" cache %0, 0(%1)\n\t"					\
+				".set mips32\n\t"						\
+				".set pop\n"							\
+				:										\
+				: "I" (Index_Prefetch_I), "r"(addr));	\
+		}												\
+	}													\
+while(0)
+
+	local_irq_disable();
+#ifdef CONFIG_SOC_4780
+	blast_dcache_jz();
+#endif
+	cache_prefetch(IDLE_PROGRAM);
+IDLE_PROGRAM:
+	if (!need_resched())
+		__asm__ __volatile__ (" .set    push            \n"
+							  " .set    mips3           \n"
+							  " sync                    \n"
+							  " lw      $0,     0(%0)   \n"
+							  " wait                    \n"
+							  " nop                     \n"
+							  " nop                     \n"
+							  " nop                     \n"
+							  " .set    pop             \n"
+							  :: "r" (0xa0000000)
+			);
+	local_irq_enable();
+	return;
+}
 
 static void r3081_wait(void)
 {
@@ -167,6 +214,8 @@ void __init check_wait(void)
 	case CPU_CAVIUM_OCTEON_PLUS:
 	case CPU_CAVIUM_OCTEON2:
 	case CPU_JZRISC:
+		cpu_wait = jz_wait_irqoff;
+		break;
 	case CPU_LOONGSON1:
 	case CPU_XLR:
 	case CPU_XLP:
@@ -182,6 +231,8 @@ void __init check_wait(void)
 	case CPU_24K:
 	case CPU_34K:
 	case CPU_1004K:
+	case CPU_PROAPTIV:
+	case CPU_INTERAPTIV:
 		cpu_wait = r4k_wait;
 		if (read_c0_config7() & MIPS_CONF7_WII)
 			cpu_wait = r4k_wait_irqoff;

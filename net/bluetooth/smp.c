@@ -366,6 +366,20 @@ static int tk_request(struct l2cap_conn *conn, u8 remote_oob, u8 auth,
 	return ret;
 }
 
+bdaddr_t* convAddr(bdaddr_t *addr)
+{
+	static bdaddr_t sAddr;
+	memcpy(&sAddr, addr, sizeof(sAddr));
+	sAddr.b[5] = ~sAddr.b[5];
+	sAddr.b[5] &= 0x7F;
+	sAddr.b[5] |= 0x40;
+
+	printk("0x%x:0x%x:0x%x:0x%x:0x%x:0x%x:", sAddr.b[5],sAddr.b[4],sAddr.b[3],sAddr.b[2],sAddr.b[1],sAddr.b[0]);
+	return &sAddr;
+}
+
+#define LOCAL_ADDR_TYPE 1 //add by feng.shang : random address type
+
 static void confirm_work(struct work_struct *work)
 {
 	struct smp_chan *smp = container_of(work, struct smp_chan, confirm);
@@ -386,11 +400,11 @@ static void confirm_work(struct work_struct *work)
 	smp->tfm = tfm;
 
 	if (conn->hcon->out)
-		ret = smp_c1(tfm, smp->tk, smp->prnd, smp->preq, smp->prsp, 0,
-			     conn->src, conn->hcon->dst_type, conn->dst, res);
+		ret = smp_c1(tfm, smp->tk, smp->prnd, smp->preq, smp->prsp, LOCAL_ADDR_TYPE,
+			     convAddr(conn->src), conn->hcon->dst_type, conn->dst, res);
 	else
 		ret = smp_c1(tfm, smp->tk, smp->prnd, smp->preq, smp->prsp,
-			     conn->hcon->dst_type, conn->dst, 0, conn->src,
+			     conn->hcon->dst_type, conn->dst, LOCAL_ADDR_TYPE, convAddr(conn->src),
 			     res);
 	if (ret) {
 		reason = SMP_UNSPECIFIED;
@@ -425,11 +439,11 @@ static void random_work(struct work_struct *work)
 	BT_DBG("conn %p %s", conn, conn->hcon->out ? "master" : "slave");
 
 	if (hcon->out)
-		ret = smp_c1(tfm, smp->tk, smp->rrnd, smp->preq, smp->prsp, 0,
-			     conn->src, hcon->dst_type, conn->dst, res);
+		ret = smp_c1(tfm, smp->tk, smp->rrnd, smp->preq, smp->prsp, LOCAL_ADDR_TYPE,
+			     convAddr(conn->src), hcon->dst_type, conn->dst, res);
 	else
 		ret = smp_c1(tfm, smp->tk, smp->rrnd, smp->preq, smp->prsp,
-			     hcon->dst_type, conn->dst, 0, conn->src, res);
+			     hcon->dst_type, conn->dst, LOCAL_ADDR_TYPE, convAddr(conn->src), res);
 	if (ret) {
 		reason = SMP_UNSPECIFIED;
 		goto error;
@@ -996,7 +1010,7 @@ int smp_distribute_keys(struct l2cap_conn *conn, __u8 force)
 
 		/* Just public address */
 		memset(&addrinfo, 0, sizeof(addrinfo));
-		bacpy(&addrinfo.bdaddr, conn->src);
+		bacpy(&addrinfo.bdaddr, convAddr(conn->src));
 
 		smp_send_cmd(conn, SMP_CMD_IDENT_ADDR_INFO, sizeof(addrinfo),
 								&addrinfo);

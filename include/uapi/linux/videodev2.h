@@ -274,14 +274,18 @@ struct v4l2_capability {
  *	V I D E O   I M A G E   F O R M A T
  */
 struct v4l2_pix_format {
-	__u32         		width;
-	__u32			height;
-	__u32			pixelformat;
-	__u32			field;		/* enum v4l2_field */
-	__u32            	bytesperline;	/* for padding, zero if unused */
-	__u32          		sizeimage;
-	__u32			colorspace;	/* enum v4l2_colorspace */
-	__u32			priv;		/* private data, depends on pixelformat */
+    __u32               width;
+    __u32           height;
+    __u32           pixelformat;
+    __u32           field;      /* enum v4l2_field */
+    __u32               bytesperline;   /* for padding, zero if unused */
+    __u32               sizeimage;
+    __u32           colorspace; /* enum v4l2_colorspace */
+    __u32           priv;       /* private data, depends on pixelformat */
+    __u32           flags;      /* format flags (V4L2_PIX_FMT_FLAG_*) */
+    __u32           ycbcr_enc;  /* enum v4l2_ycbcr_encoding */
+    __u32           quantization;   /* enum v4l2_quantization */
+    __u32           xfer_func;  /* enum v4l2_xfer_func */
 };
 
 /*      Pixel format         FOURCC                          depth  Description  */
@@ -319,6 +323,7 @@ struct v4l2_pix_format {
 /* Luminance+Chrominance formats */
 #define V4L2_PIX_FMT_YVU410  v4l2_fourcc('Y', 'V', 'U', '9') /*  9  YVU 4:1:0     */
 #define V4L2_PIX_FMT_YVU420  v4l2_fourcc('Y', 'V', '1', '2') /* 12  YVU 4:2:0     */
+#define V4L2_PIX_FMT_JZ420B  v4l2_fourcc('J', 'Z', '1', '2') /* 12  YUV 4:2:0 B   */
 #define V4L2_PIX_FMT_YUYV    v4l2_fourcc('Y', 'U', 'Y', 'V') /* 16  YUV 4:2:2     */
 #define V4L2_PIX_FMT_YYUV    v4l2_fourcc('Y', 'Y', 'U', 'V') /* 16  YUV 4:2:2     */
 #define V4L2_PIX_FMT_YVYU    v4l2_fourcc('Y', 'V', 'Y', 'U') /* 16 YVU 4:2:2 */
@@ -1961,5 +1966,9 @@ struct v4l2_create_buffers {
    drivers/media/video/v4l2-compat-ioctl32.c as well! */
 
 #define BASE_VIDIOC_PRIVATE	192		/* 192-255 are private */
-
+#if 1
+/* Additional, the command is used for monitoring whether the v4l2-buffer is ready.
+   The command is added by xhshen, who is from ingenic company. */
+#define VIDIOC_DEFAULT_CMD_LISTEN_BUF	 _IOR('V', BASE_VIDIOC_PRIVATE - 1, int)
+#endif
 #endif /* _UAPI__LINUX_VIDEODEV2_H */

@@ -134,6 +134,26 @@ int __init register_security(struct security_operations *ops)
 
 /* Security operations */
 
+int security_binder_set_context_mgr(struct task_struct *mgr)
+{
+	return security_ops->binder_set_context_mgr(mgr);
+}
+
+int security_binder_transaction(struct task_struct *from, struct task_struct *to)
+{
+	return security_ops->binder_transaction(from, to);
+}
+
+int security_binder_transfer_binder(struct task_struct *from, struct task_struct *to)
+{
+	return security_ops->binder_transfer_binder(from, to);
+}
+
+int security_binder_transfer_file(struct task_struct *from, struct task_struct *to, struct file *file)
+{
+	return security_ops->binder_transfer_file(from, to, file);
+}
+
 int security_ptrace_access_check(struct task_struct *child, unsigned int mode)
 {
 #ifdef CONFIG_SECURITY_YAMA_STACKED
@@ -335,10 +355,10 @@ int security_inode_init_security(struct inode *inode, struct inode *dir,
 	if (unlikely(IS_PRIVATE(inode)))
 		return 0;
 
-	memset(new_xattrs, 0, sizeof new_xattrs);
 	if (!initxattrs)
 		return security_ops->inode_init_security(inode, dir, qstr,
 							 NULL, NULL, NULL);
+	memset(new_xattrs, 0, sizeof(new_xattrs));
 	lsm_xattr = new_xattrs;
 	ret = security_ops->inode_init_security(inode, dir, qstr,
 						&lsm_xattr->name,
@@ -353,10 +373,8 @@ int security_inode_init_security(struct inode *inode, struct inode *dir,
 		goto out;
 	ret = initxattrs(inode, new_xattrs, fs_data);
 out:
-	for (xattr = new_xattrs; xattr->name != NULL; xattr++) {
-		kfree(xattr->name);
+	for (xattr = new_xattrs; xattr->value != NULL; xattr++)
 		kfree(xattr->value);
-	}
 	return (ret == -EOPNOTSUPP) ? 0 : ret;
 }
 EXPORT_SYMBOL(security_inode_init_security);
@@ -1046,6 +1064,12 @@ int security_netlink_send(struct sock *sk, struct sk_buff *skb)
 {
 	return security_ops->netlink_send(sk, skb);
 }
+
+int security_ismaclabel(const char *name)
+{
+	return security_ops->ismaclabel(name);
+}
+EXPORT_SYMBOL(security_ismaclabel);
 
 int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
 {

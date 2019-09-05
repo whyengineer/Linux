@@ -16,12 +16,14 @@
 #include <linux/smp.h>
 #include <linux/threads.h>
 #include <linux/cpumask.h>
+#include <linux/cache.h>
 
 #include <linux/atomic.h>
 #include <asm/smp-ops.h>
+#include <asm/percpu.h>
 
 extern int smp_num_siblings;
-extern cpumask_t cpu_sibling_map[];
+DECLARE_PER_CPU_SHARED_ALIGNED(cpumask_t, cpu_sibling_map);
 
 #define raw_smp_processor_id() (current_thread_info()->cpu)
 
@@ -42,6 +44,7 @@ extern int __cpu_logical_map[NR_CPUS];
 #define SMP_ICACHE_FLUSH	0x4
 /* Used by kexec crashdump to save all cpu's state */
 #define SMP_DUMP		0x8
+#define SMP_IPI_TIMER		0xC
 
 extern volatile cpumask_t cpu_callin_map;
 

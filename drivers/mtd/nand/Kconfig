@@ -1,3 +1,10 @@
+config MTD_NAND_IDS
+	tristate "Include chip ids for known NAND devices."
+	depends on MTD
+	help
+	  Useful for NAND drivers that do not use the NAND subsystem but
+	  still like to take advantage of the known chip information.
+
 config MTD_NAND_ECC
 	tristate
 
@@ -132,9 +139,6 @@ config BCH_CONST_T
 	default 4 if MTD_NAND_OMAP_BCH4
 	default 8 if MTD_NAND_OMAP_BCH8
 endif
-
-config MTD_NAND_IDS
-	tristate
 
 config MTD_NAND_RICOH
 	tristate "Ricoh xD card reader"
@@ -528,7 +532,11 @@ config MTD_NAND_JZ4740
 	depends on MACH_JZ4740
 	help
 		Enables support for NAND Flash on JZ4740 SoC based boards.
-
+config MTD_JZ_SPI_NAND
+	tristate "Support for SPI_NAND "
+#   depends on JZ_SPI0 && !NAND
+	help
+		Enables support for MTD SPI NAND Flash.
 config MTD_NAND_FSMC
 	tristate "Support for NAND on ST Micros FSMC"
 	depends on PLAT_SPEAR || ARCH_NOMADIK || ARCH_U8500 || MACH_U300
@@ -543,5 +551,7 @@ config MTD_NAND_XWAY
 	help
 	  Enables support for NAND Flash chips on Lantiq XWAY SoCs. NAND is attached
 	  to the External Bus Unit (EBU).
+
+source "drivers/mtd/nand/ingenic/Kconfig"
 
 endif # MTD_NAND

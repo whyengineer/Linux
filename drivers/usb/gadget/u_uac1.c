@@ -19,6 +19,13 @@
 
 #include "u_uac1.h"
 
+//#define MIC_SATE	    96000
+#define MIC_SATE	    48000
+#define MIC_CH		    2
+#define SPK_SATE	    48000
+#define SPK_CH		    2
+
+
 /*
  * This component encapsulates the ALSA devices for USB audio gadget
  */
@@ -121,8 +128,8 @@ static int playback_default_hw_params(struct gaudio_snd_dev *snd)
 	*/
 	snd->access = SNDRV_PCM_ACCESS_RW_INTERLEAVED;
 	snd->format = SNDRV_PCM_FORMAT_S16_LE;
-	snd->channels = 2;
-	snd->rate = 48000;
+	snd->channels = SPK_CH;
+	snd->rate = SPK_SATE;
 
 	params = kzalloc(sizeof(*params), GFP_KERNEL);
 	if (!params)
@@ -158,12 +165,66 @@ static int playback_default_hw_params(struct gaudio_snd_dev *snd)
 	kfree(params);
 
 	INFO(snd->card,
-		"Hardware params: access %x, format %x, channels %d, rate %d\n",
+		"play, Hardware params: access %x, format %x, channels %d, rate %d\n",
 		snd->access, snd->format, snd->channels, snd->rate);
 
 	return 0;
 }
+static int capture_default_hw_params(struct gaudio_snd_dev *snd)
+{
+#ifdef CONFIG_GADGET_UAC1_CAP_MIC
+	struct snd_pcm_substream *substream = snd->substream;
+	struct snd_pcm_hw_params *params;
+	snd_pcm_sframes_t result;
+#endif
 
+	snd->access = SNDRV_PCM_ACCESS_RW_INTERLEAVED;
+	snd->format = SNDRV_PCM_FORMAT_S16_LE;
+	snd->channels = MIC_CH;
+	snd->rate = MIC_SATE;
+
+#ifdef CONFIG_GADGET_UAC1_CAP_MIC
+	params = kzalloc(sizeof(*params), GFP_KERNEL);
+	if (!params)
+		return -ENOMEM;
+
+	_snd_pcm_hw_params_any(params);
+	_snd_pcm_hw_param_set(params, SNDRV_PCM_HW_PARAM_ACCESS,
+			snd->access, 0);
+	_snd_pcm_hw_param_set(params, SNDRV_PCM_HW_PARAM_FORMAT,
+			snd->format, 0);
+	_snd_pcm_hw_param_set(params, SNDRV_PCM_HW_PARAM_CHANNELS,
+			snd->channels, 0);
+	_snd_pcm_hw_param_set(params, SNDRV_PCM_HW_PARAM_RATE,
+			snd->rate, 0);
+
+	snd_pcm_kernel_ioctl(substream, SNDRV_PCM_IOCTL_DROP, NULL);
+	snd_pcm_kernel_ioctl(substream, SNDRV_PCM_IOCTL_HW_PARAMS, params);
+
+	result = snd_pcm_kernel_ioctl(substream, SNDRV_PCM_IOCTL_PREPARE, NULL);
+	if (result < 0) {
+		ERROR(snd->card,
+			"Preparing sound card failed: %d\n", (int)result);
+		kfree(params);
+		return result;
+	}
+
+	/* Store the hardware parameters */
+	snd->access = params_access(params);
+	snd->format = params_format(params);
+	snd->channels = params_channels(params);
+	snd->rate = params_rate(params);
+
+	kfree(params);
+
+	INFO(snd->card,
+		"cap, Hardware params: access %x, format %x, channels %d, rate %d\n",
+		snd->access, snd->format, snd->channels, snd->rate);
+#endif
+
+	return 0;
+
+}
 /**
  * Playback audio buffer data by ALSA PCM device
  */
@@ -202,6 +263,41 @@ try_again:
 	return 0;
 }
 
+#ifdef CONFIG_GADGET_UAC1_CAP_MIC
+static size_t u_audio_capture(struct gaudio *card, void *buf, size_t count)
+{
+	struct gaudio_snd_dev	*snd = &card->capture;
+	struct snd_pcm_substream *substream = snd->substream;
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	ssize_t result;
+	snd_pcm_sframes_t frames;
+
+	if (runtime->status->state == SNDRV_PCM_STATE_XRUN ||
+			runtime->status->state == SNDRV_PCM_STATE_SUSPENDED) {
+
+
+
+		result = snd_pcm_kernel_ioctl(substream,
+				SNDRV_PCM_IOCTL_PREPARE, NULL);
+
+		if (result < 0) {
+			ERROR(card, "Preparing sound card failed: %d\n",
+					(int)result);
+			return result;
+		}
+	}
+
+	frames = bytes_to_frames(runtime, count);
+
+	result = snd_pcm_lib_read(snd->substream, buf, frames);
+	if (result != frames) {
+		ERROR(card, "Capture error: %d\n", (int)result);
+	}
+
+	return result;
+}
+#endif
+
 static int u_audio_get_playback_channels(struct gaudio *card)
 {
 	return card->playback.channels;
@@ -210,6 +306,15 @@ static int u_audio_get_playback_channels(struct gaudio *card)
 static int u_audio_get_playback_rate(struct gaudio *card)
 {
 	return card->playback.rate;
+}
+static int u_audio_get_capture_channels(struct gaudio *card)
+{
+	return card->capture.channels;
+}
+
+static int u_audio_get_capture_rate(struct gaudio *card)
+{
+	return card->capture.rate;
 }
 
 /**
@@ -220,6 +325,7 @@ static int gaudio_open_snd_dev(struct gaudio *card)
 {
 	struct snd_pcm_file *pcm_file;
 	struct gaudio_snd_dev *snd;
+	int ret = 0;
 
 	if (!card)
 		return -ENODEV;
@@ -228,30 +334,33 @@ static int gaudio_open_snd_dev(struct gaudio *card)
 	snd = &card->control;
 	snd->filp = filp_open(fn_cntl, O_RDWR, 0);
 	if (IS_ERR(snd->filp)) {
-		int ret = PTR_ERR(snd->filp);
+		ret = PTR_ERR(snd->filp);
 		ERROR(card, "unable to open sound control device file: %s\n",
 				fn_cntl);
 		snd->filp = NULL;
-		return ret;
+		goto control_failed;
 	}
 	snd->card = card;
 
+#ifdef CONFIG_GADGET_UAC1_PLAY
 	/* Open PCM playback device and setup substream */
 	snd = &card->playback;
 	snd->filp = filp_open(fn_play, O_WRONLY, 0);
 	if (IS_ERR(snd->filp)) {
-		int ret = PTR_ERR(snd->filp);
-
+		ret = PTR_ERR(snd->filp);
 		ERROR(card, "No such PCM playback device: %s\n", fn_play);
 		snd->filp = NULL;
-		return ret;
+		filp_close(card->control.filp, current->files);
+		goto playback_failed;
 	}
 	pcm_file = snd->filp->private_data;
 	snd->substream = pcm_file->substream;
 	snd->card = card;
 	playback_default_hw_params(snd);
+#endif
 
 	/* Open PCM capture device and setup substream */
+#ifdef CONFIG_GADGET_UAC1_CAP
 	snd = &card->capture;
 	snd->filp = filp_open(fn_cap, O_RDONLY, 0);
 	if (IS_ERR(snd->filp)) {
@@ -259,13 +368,30 @@ static int gaudio_open_snd_dev(struct gaudio *card)
 		snd->substream = NULL;
 		snd->card = NULL;
 		snd->filp = NULL;
+		filp_close(card->playback.filp, current->files);
+		filp_close(card->control.filp, current->files);
+		goto capture_failed;
 	} else {
 		pcm_file = snd->filp->private_data;
 		snd->substream = pcm_file->substream;
 		snd->card = card;
+		capture_default_hw_params(snd);
 	}
+#endif
 
 	return 0;
+capture_failed:
+	card->playback.filp = NULL;
+	card->playback.substream = NULL;
+	card->playback.card = NULL;
+	card->playback.channels = 0;
+	card->playback.access = 0;
+	card->playback.rate = 0;
+	card->playback.format = 0;
+playback_failed:
+	card->control.card = NULL;
+control_failed:
+	return ret;
 }
 
 /**
@@ -294,6 +420,7 @@ static int gaudio_close_snd_dev(struct gaudio *gau)
 }
 
 static struct gaudio *the_card;
+static struct f_audio *audio_card;
 /**
  * gaudio_setup - setup ALSA interface and preparing for USB transfer
  *
@@ -301,15 +428,19 @@ static struct gaudio *the_card;
  *
  * Returns negative errno, or zero on success
  */
-int __init gaudio_setup(struct gaudio *card)
+int __init gaudio_setup(struct f_audio * audio)
 {
 	int	ret;
 
-	ret = gaudio_open_snd_dev(card);
+	audio_card = audio;
+	ret = gaudio_open_snd_dev(&audio->card);
 	if (ret)
-		ERROR(card, "we need at least one control device\n");
+	{
+		ERROR(&audio->card, "we need at least one control device\n");
+		the_card = NULL;
+	}
 	else if (!the_card)
-		the_card = card;
+		the_card = &audio->card;
 
 	return ret;
 
@@ -326,5 +457,8 @@ void gaudio_cleanup(void)
 		gaudio_close_snd_dev(the_card);
 		the_card = NULL;
 	}
+
+	kfree(audio_card);
+
 }
 

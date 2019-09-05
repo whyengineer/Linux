@@ -1313,6 +1313,13 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
  *	@pages contains the number of pages.
  *	Return 0 if permission is granted.
  *
+ * @ismaclabel:
+ *	Check if the extended attribute specified by @name
+ *	represents a MAC label. Returns 1 if name is a MAC
+ *	attribute otherwise returns 0.
+ *	@name full extended attribute name to check against
+ *	LSM as a MAC label.
+ *
  * @secid_to_secctx:
  *	Convert secid to security context.  If secdata is NULL the length of
  *	the result will be returned in seclen, but no secdata will be returned.
@@ -1401,6 +1408,11 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
  */
 struct security_operations {
 	char name[SECURITY_NAME_MAX + 1];
+
+	int (*binder_set_context_mgr) (struct task_struct *mgr);
+	int (*binder_transaction) (struct task_struct *from, struct task_struct *to);
+	int (*binder_transfer_binder) (struct task_struct *from, struct task_struct *to);
+	int (*binder_transfer_file) (struct task_struct *from, struct task_struct *to, struct file *file);
 
 	int (*ptrace_access_check) (struct task_struct *child, unsigned int mode);
 	int (*ptrace_traceme) (struct task_struct *parent);
@@ -1590,6 +1602,7 @@ struct security_operations {
 
 	int (*getprocattr) (struct task_struct *p, char *name, char **value);
 	int (*setprocattr) (struct task_struct *p, char *name, void *value, size_t size);
+	int (*ismaclabel) (const char *name);
 	int (*secid_to_secctx) (u32 secid, char **secdata, u32 *seclen);
 	int (*secctx_to_secid) (const char *secdata, u32 seclen, u32 *secid);
 	void (*release_secctx) (char *secdata, u32 seclen);
@@ -1690,6 +1703,10 @@ extern void __init security_fixup_ops(struct security_operations *ops);
 
 
 /* Security operations */
+int security_binder_set_context_mgr(struct task_struct *mgr);
+int security_binder_transaction(struct task_struct *from, struct task_struct *to);
+int security_binder_transfer_binder(struct task_struct *from, struct task_struct *to);
+int security_binder_transfer_file(struct task_struct *from, struct task_struct *to, struct file *file);
 int security_ptrace_access_check(struct task_struct *child, unsigned int mode);
 int security_ptrace_traceme(struct task_struct *parent);
 int security_capget(struct task_struct *target,
@@ -1840,6 +1857,7 @@ void security_d_instantiate(struct dentry *dentry, struct inode *inode);
 int security_getprocattr(struct task_struct *p, char *name, char **value);
 int security_setprocattr(struct task_struct *p, char *name, void *value, size_t size);
 int security_netlink_send(struct sock *sk, struct sk_buff *skb);
+int security_ismaclabel(const char *name);
 int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen);
 int security_secctx_to_secid(const char *secdata, u32 seclen, u32 *secid);
 void security_release_secctx(char *secdata, u32 seclen);
@@ -1865,6 +1883,26 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
  */
 
 static inline int security_init(void)
+{
+	return 0;
+}
+
+static inline int security_binder_set_context_mgr(struct task_struct *mgr)
+{
+	return 0;
+}
+
+static inline int security_binder_transaction(struct task_struct *from, struct task_struct *to)
+{
+	return 0;
+}
+
+static inline int security_binder_transfer_binder(struct task_struct *from, struct task_struct *to)
+{
+	return 0;
+}
+
+static inline int security_binder_transfer_file(struct task_struct *from, struct task_struct *to, struct file *file)
 {
 	return 0;
 }
@@ -2518,6 +2556,11 @@ static inline int security_setprocattr(struct task_struct *p, char *name, void *
 static inline int security_netlink_send(struct sock *sk, struct sk_buff *skb)
 {
 	return cap_netlink_send(sk, skb);
+}
+
+static inline int security_ismaclabel(const char *name)
+{
+	return 0;
 }
 
 static inline int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)

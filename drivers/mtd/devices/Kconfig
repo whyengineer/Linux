@@ -68,9 +68,59 @@ config MTD_DATAFLASH_WRITE_VERIFY
 	  device thinks the write was successful, a bit could have been
 	  flipped accidentally due to device wear or something else.
 
+config JZ_SFC
+	tristate "Ingenic JZ series SFC driver"
+	depends on  MACH_XBURST
+	help
+		SFC driver for Ingenic JZ series SoCs
+config JZ_SFC_NOR
+	tristate "Ingenic JZ SFC nor"
+	depends on JZ_SFC
+	help
+		SFC driver for Ingenic JZ sfc nor
+
+config JZ_SFCNAND
+	tristate "Ingenic JZ SFC nand"
+	depends on JZ_SFC
+        select MTD_NAND
+	help
+		SFC driver for Ingenic JZ sfc nand
+
+config SFC_SPEED
+    int "JZ SFC speed in MHZ"
+	range 1 160
+	default 100
+	depends on JZ_SFC
+	help
+	    Select sfc speed.
+		Examples:
+			100 =>  100 MHZ
+
+config ENABLE_DEEP_POWER_DOWN
+	tristate "enable nor entry deep power down when suspend"
+	depends on JZ_SFC_NOR
+	default n
+	help
+		nor support entry deep power down mode, but nand not support.
+
+
+config MTD_JZ_SFC_NORFLASH
+	bool "Support ingenic sfc-mtd"
+	depends on JZ_SFC
+	help
+		Now support GD25LQ64C
+
+config MTD_JZ_SPI_NORFLASH
+	bool "Support ingenic spi-mtd"
+	help
+		Now support GD25LQ64C
+config MTD_JZ_SFC_NAND
+	bool "Support Ingenic sfc_nand"
+
 config MTD_DATAFLASH_OTP
 	bool "DataFlash OTP support (Security Register)"
 	depends on MTD_DATAFLASH
+	select HAVE_MTD_OTP
 	help
 	  Newer DataFlash chips (revisions C and D) support 128 bytes of
 	  one-time-programmable (OTP) data.  The first half may be written

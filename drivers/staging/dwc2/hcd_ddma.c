@@ -169,19 +169,19 @@ static void dwc2_per_sched_enable(struct dwc2_hsotg *hsotg, u32 fr_list_en)
 
 	spin_lock_irqsave(&hsotg->lock, flags);
 
-	hcfg = readl(hsotg->regs + HCFG);
+	hcfg = dwc2_readl(hsotg->regs + HCFG);
 	if (hcfg & HCFG_PERSCHEDENA) {
 		/* already enabled */
 		spin_unlock_irqrestore(&hsotg->lock, flags);
 		return;
 	}
 
-	writel(hsotg->frame_list_dma, hsotg->regs + HFLBADDR);
+	dwc2_writel(hsotg->frame_list_dma, hsotg->regs + HFLBADDR);
 
 	hcfg &= ~HCFG_FRLISTEN_MASK;
 	hcfg |= fr_list_en | HCFG_PERSCHEDENA;
 	dev_vdbg(hsotg->dev, "Enabling Periodic schedule\n");
-	writel(hcfg, hsotg->regs + HCFG);
+	dwc2_writel(hcfg, hsotg->regs + HCFG);
 
 	spin_unlock_irqrestore(&hsotg->lock, flags);
 }
@@ -193,7 +193,7 @@ static void dwc2_per_sched_disable(struct dwc2_hsotg *hsotg)
 
 	spin_lock_irqsave(&hsotg->lock, flags);
 
-	hcfg = readl(hsotg->regs + HCFG);
+	hcfg = dwc2_readl(hsotg->regs + HCFG);
 	if (!(hcfg & HCFG_PERSCHEDENA)) {
 		/* already disabled */
 		spin_unlock_irqrestore(&hsotg->lock, flags);
@@ -202,7 +202,7 @@ static void dwc2_per_sched_disable(struct dwc2_hsotg *hsotg)
 
 	hcfg &= ~HCFG_PERSCHEDENA;
 	dev_vdbg(hsotg->dev, "Disabling Periodic schedule\n");
-	writel(hcfg, hsotg->regs + HCFG);
+	dwc2_writel(hcfg, hsotg->regs + HCFG);
 
 	spin_unlock_irqrestore(&hsotg->lock, flags);
 }
@@ -271,10 +271,15 @@ static void dwc2_release_channel_ddma(struct dwc2_hsotg *hsotg,
 {
 	struct dwc2_host_chan *chan = qh->channel;
 
-	if (dwc2_qh_is_non_per(qh))
-		hsotg->non_periodic_channels--;
-	else
+	if (dwc2_qh_is_non_per(qh)) {
+		if (hsotg->core_params->uframe_sched > 0)
+			hsotg->available_host_channels++;
+		else
+			hsotg->non_periodic_channels--;
+	} else {
 		dwc2_update_frame_list(hsotg, qh, 0);
+		hsotg->available_host_channels++;
+	}
 
 	/*
 	 * The condition is added to prevent double cleanup try in case of
@@ -370,7 +375,8 @@ void dwc2_hcd_qh_free_ddma(struct dwc2_hsotg *hsotg, struct dwc2_qh *qh)
 
 	if ((qh->ep_type == USB_ENDPOINT_XFER_ISOC ||
 	     qh->ep_type == USB_ENDPOINT_XFER_INT) &&
-	    !hsotg->periodic_channels && hsotg->frame_list) {
+	    (hsotg->core_params->uframe_sched > 0 ||
+	     !hsotg->periodic_channels) && hsotg->frame_list) {
 		dwc2_per_sched_disable(hsotg);
 		dwc2_frame_list_free(hsotg);
 	}
@@ -519,10 +525,12 @@ static void dwc2_fill_host_isoc_dma_desc(struct dwc2_hsotg *hsotg,
 	dma_desc->status = qh->n_bytes[idx] << HOST_DMA_ISOC_NBYTES_SHIFT &
 			   HOST_DMA_ISOC_NBYTES_MASK;
 
+	dma_desc->status |= HOST_DMA_A;
 #ifdef ISOC_URB_GIVEBACK_ASAP
 	/* Set IOC for each descriptor corresponding to last frame of URB */
-	if (qtd->isoc_frame_index_last == qtd->urb->packet_count)
+	if (qtd->isoc_frame_index_last == qtd->urb->packet_count-1){
 		dma_desc->status |= HOST_DMA_IOC;
+	}
 #endif
 
 	qh->ntd++;
@@ -553,8 +561,6 @@ static void dwc2_init_isoc_dma_desc(struct dwc2_hsotg *hsotg,
 	list_for_each_entry(qtd, &qh->qtd_list, qtd_list_entry) {
 		while (qh->ntd < ntd_max && qtd->isoc_frame_index_last <
 						qtd->urb->packet_count) {
-			if (n_desc > 1)
-				qh->desc_list[n_desc - 1].status |= HOST_DMA_A;
 			dwc2_fill_host_isoc_dma_desc(hsotg, qtd, qh,
 						     max_xfer_size, idx);
 			idx = dwc2_desclist_idx_inc(idx, inc, qh->dev_speed);
@@ -616,8 +622,8 @@ static void dwc2_fill_host_dma_desc(struct dwc2_hsotg *hsotg,
 	struct dwc2_hcd_dma_desc *dma_desc = &qh->desc_list[n_desc];
 	int len = chan->xfer_len;
 
-	if (len > MAX_DMA_DESC_SIZE)
-		len = MAX_DMA_DESC_SIZE - chan->max_packet + 1;
+	if (len > MAX_DMA_DESC_SIZE - (chan->max_packet - 1))
+		len = MAX_DMA_DESC_SIZE - (chan->max_packet - 1);
 
 	if (chan->ep_is_in) {
 		int num_packets;
@@ -800,11 +806,15 @@ static int dwc2_cmpl_host_isoc_dma_desc(struct dwc2_hsotg *hsotg,
 	u16 remain = 0;
 	int rc = 0;
 
-	frame_desc = &qtd->urb->iso_descs[qtd->isoc_frame_index_last];
+	if (!qtd->urb)
+		return -EINVAL;
+
+	frame_desc = &qtd->urb->iso_descs[qtd->isoc_frame_index];
+
 	dma_desc->buf = (u32)(qtd->urb->dma + frame_desc->offset);
 	if (chan->ep_is_in)
-		remain = dma_desc->status >> HOST_DMA_ISOC_NBYTES_SHIFT &
-			HOST_DMA_ISOC_NBYTES_MASK >> HOST_DMA_ISOC_NBYTES_SHIFT;
+		remain = (dma_desc->status & HOST_DMA_ISOC_NBYTES_MASK) >>
+			 HOST_DMA_ISOC_NBYTES_SHIFT;
 
 	if ((dma_desc->status & HOST_DMA_STS_MASK) == HOST_DMA_STS_PKTERR) {
 		/*
@@ -826,7 +836,7 @@ static int dwc2_cmpl_host_isoc_dma_desc(struct dwc2_hsotg *hsotg,
 		 * urb->status is not used for isoc transfers here. The
 		 * individual frame_desc status are used instead.
 		 */
-		dwc2_host_complete(hsotg, qtd->urb->priv, qtd->urb, 0);
+		dwc2_host_complete(hsotg, qtd, 0);
 		dwc2_hcd_qtd_unlink_and_free(hsotg, qtd, qh);
 
 		/*
@@ -846,6 +856,7 @@ static int dwc2_cmpl_host_isoc_dma_desc(struct dwc2_hsotg *hsotg,
 	if (dma_desc->status & HOST_DMA_IOC)
 		rc = DWC2_CMPL_STOP;
 
+	dma_desc->status = 0;
 	return rc;
 }
 
@@ -884,13 +895,16 @@ static void dwc2_complete_isoc_xfer_ddma(struct dwc2_hsotg *hsotg,
 
 		list_for_each_entry_safe(qtd, qtd_tmp, &qh->qtd_list,
 					 qtd_list_entry) {
-			for (idx = 0; idx < qtd->urb->packet_count; idx++) {
-				frame_desc = &qtd->urb->iso_descs[idx];
-				frame_desc->status = err;
+			if (qtd->urb) {
+				for (idx = 0; idx < qtd->urb->packet_count;
+				     idx++) {
+					frame_desc = &qtd->urb->iso_descs[idx];
+					frame_desc->status = err;
+				}
+
+				dwc2_host_complete(hsotg, qtd, err);
 			}
 
-			dwc2_host_complete(hsotg, qtd->urb->priv, qtd->urb,
-					   err);
 			dwc2_hcd_qtd_unlink_and_free(hsotg, qtd, qh);
 		}
 
@@ -929,8 +943,8 @@ static int dwc2_update_non_isoc_urb_state_ddma(struct dwc2_hsotg *hsotg,
 	u16 remain = 0;
 
 	if (chan->ep_is_in)
-		remain = dma_desc->status >> HOST_DMA_NBYTES_SHIFT &
-			 HOST_DMA_NBYTES_MASK >> HOST_DMA_NBYTES_SHIFT;
+		remain = (dma_desc->status & HOST_DMA_NBYTES_MASK) >>
+			 HOST_DMA_NBYTES_SHIFT;
 
 	dev_vdbg(hsotg->dev, "remain=%d dwc2_urb=%p\n", remain, urb);
 
@@ -1015,6 +1029,9 @@ static int dwc2_process_non_isoc_desc(struct dwc2_hsotg *hsotg,
 
 	dev_vdbg(hsotg->dev, "%s()\n", __func__);
 
+	if (!urb)
+		return -EINVAL;
+
 	dma_desc = &qh->desc_list[desc_num];
 	n_bytes = qh->n_bytes[desc_num];
 	dev_vdbg(hsotg->dev,
@@ -1024,7 +1041,7 @@ static int dwc2_process_non_isoc_desc(struct dwc2_hsotg *hsotg,
 						     halt_status, n_bytes,
 						     xfer_done);
 	if (failed || (*xfer_done && urb->status != -EINPROGRESS)) {
-		dwc2_host_complete(hsotg, urb->priv, urb, urb->status);
+		dwc2_host_complete(hsotg, qtd, urb->status);
 		dwc2_hcd_qtd_unlink_and_free(hsotg, qtd, qh);
 		dev_vdbg(hsotg->dev, "failed=%1x xfer_done=%1x status=%08x\n",
 			 failed, *xfer_done, urb->status);
@@ -1089,8 +1106,10 @@ static void dwc2_complete_non_isoc_xfer_ddma(struct dwc2_hsotg *hsotg,
 		for (i = 0; i < qtd->n_desc; i++) {
 			if (dwc2_process_non_isoc_desc(hsotg, chan, chnum, qtd,
 						       desc_num, halt_status,
-						       &xfer_done))
+						       &xfer_done)) {
+				qtd = NULL;
 				break;
+			}
 			desc_num++;
 		}
 	}

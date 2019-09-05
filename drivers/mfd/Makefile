@@ -32,6 +32,7 @@ obj-$(CONFIG_MFD_TC3589X)	+= tc3589x.o
 obj-$(CONFIG_MFD_T7L66XB)	+= t7l66xb.o tmio_core.o
 obj-$(CONFIG_MFD_TC6387XB)	+= tc6387xb.o tmio_core.o
 obj-$(CONFIG_MFD_TC6393XB)	+= tc6393xb.o tmio_core.o
+obj-$(CONFIG_MFD_ACT8600)	+= act8600-core.o
 
 obj-$(CONFIG_MFD_ARIZONA)	+= arizona-core.o
 obj-$(CONFIG_MFD_ARIZONA)	+= arizona-irq.o
@@ -131,6 +132,8 @@ obj-$(CONFIG_LPC_ICH)		+= lpc_ich.o
 obj-$(CONFIG_MFD_RDC321X)	+= rdc321x-southbridge.o
 obj-$(CONFIG_MFD_JANZ_CMODIO)	+= janz-cmodio.o
 obj-$(CONFIG_MFD_JZ4740_ADC)	+= jz4740-adc.o
+obj-$(CONFIG_MFD_JZ_SADC_V11)   += jz_adc_v12.o
+obj-$(CONFIG_MFD_JZ_SADC_V12)	+= jz_adc_v12.o
 obj-$(CONFIG_MFD_TPS6586X)	+= tps6586x.o
 obj-$(CONFIG_MFD_VX855)		+= vx855.o
 obj-$(CONFIG_MFD_WL1273_CORE)	+= wl1273-core.o
@@ -155,3 +158,7 @@ obj-$(CONFIG_MFD_LM3533)	+= lm3533-core.o lm3533-ctrlbank.o
 obj-$(CONFIG_VEXPRESS_CONFIG)	+= vexpress-config.o vexpress-sysreg.o
 obj-$(CONFIG_MFD_RETU)		+= retu-mfd.o
 obj-$(CONFIG_MFD_AS3711)	+= as3711.o
+
+obj-$(CONFIG_MFD_DA9024)    	+= d2041-core.o d2041-irq.o d2041-i2c.o
+obj-$(CONFIG_MFD_RICOH619)	+= ricoh619.o ricoh619-irq.o
+obj-$(CONFIG_MFD_SM5007)	+= sm5007.o sm5007-irq.o

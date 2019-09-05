@@ -308,6 +308,12 @@ static int __videobuf_mmap_mapper(struct videobuf_queue *q,
 	size = (size < mem->size) ? size : mem->size;
 
 	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
+#if 0
+	pgprot_val(vma->vm_page_prot) &= ~_CACHE_MASK;
+	//pgprot_val(vma->vm_page_prot) |= _CACHE_CACHABLE_WA; /* Write-Acceleration */
+	pgprot_val(vma->vm_page_prot) |= _CACHE_CACHABLE_NONCOHERENT;
+	printk(KERN_DEBUG "__videobuf_mmap_mapper() vma->vm_page_prot=%x\n", vma->vm_page_prot);
+#endif
 	retval = remap_pfn_range(vma, vma->vm_start,
 				 mem->dma_handle >> PAGE_SHIFT,
 				 size, vma->vm_page_prot);

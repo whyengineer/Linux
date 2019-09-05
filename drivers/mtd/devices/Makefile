@@ -16,6 +16,8 @@ obj-$(CONFIG_MTD_NAND_OMAP_BCH)	+= elm.o
 obj-$(CONFIG_MTD_SPEAR_SMI)	+= spear_smi.o
 obj-$(CONFIG_MTD_SST25L)	+= sst25l.o
 obj-$(CONFIG_MTD_BCM47XXSFLASH)	+= bcm47xxsflash.o
-
+obj-$(CONFIG_MTD_JZ_SPI_NORFLASH)	+= jz_spi_norflash.o
+obj-$(CONFIG_JZ_SFC_NOR)	+= jz_sfc_nor.o jz_sfc_common.o jz_sfc_ops.o
+obj-$(CONFIG_JZ_SFCNAND)       += jz_sfc_common.o jz_sfc_nand.o nand_device/
 
 CFLAGS_docg3.o			+= -I$(src)

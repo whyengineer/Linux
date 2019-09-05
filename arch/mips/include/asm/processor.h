@@ -96,9 +96,13 @@ extern unsigned int vced_count, vcei_count;
 
 
 #define NUM_FPU_REGS	32
+#define NUM_MXU_REGS	16
 
 typedef __u64 fpureg_t;
 
+struct xburst_mxu_struct {
+	unsigned int regs[NUM_MXU_REGS];
+};
 /*
  * It would be nice to add some more fields for emulator statistics, but there
  * are a number of fixed offsets in offset.h and elsewhere that would have to
@@ -191,6 +195,19 @@ struct octeon_cvmseg_state {
 
 #endif
 
+#if defined(CONFIG_XBURST_MXUV2)
+typedef union {
+	u64 val64[2];
+} vpr_t;
+
+struct xburst_cop2_state {
+	u32 mxu_csr;
+	vpr_t vr[32];
+};
+
+#define INIT_XBURST_COP2 {0, }
+#endif
+
 typedef struct {
 	unsigned long seg;
 } mm_segment_t;
@@ -223,6 +240,16 @@ struct thread_struct {
 	/* Saved state of the DSP ASE, if available. */
 	struct mips_dsp_state dsp;
 
+	/* Saved registers of the MXU, if available. */
+	struct xburst_mxu_struct mxu;
+
+	/* for magicode cpuinfo */
+#define CPU_MIPS             0
+#define CPU_ARM              1
+#define CPU_ARM_NEON         2
+	unsigned int mcflags;
+
+
 	/* Saved watch register state, if available. */
 	union mips_watch_reg_state watch;
 
@@ -231,8 +258,10 @@ struct thread_struct {
 	unsigned long cp0_baduaddr;	/* Last kernel fault accessing USEG */
 	unsigned long error_code;
 #ifdef CONFIG_CPU_CAVIUM_OCTEON
-    struct octeon_cop2_state cp2 __attribute__ ((__aligned__(128)));
-    struct octeon_cvmseg_state cvmseg __attribute__ ((__aligned__(128)));
+	struct octeon_cop2_state cp2 __attribute__ ((__aligned__(128)));
+	struct octeon_cvmseg_state cvmseg __attribute__ ((__aligned__(128)));
+#elif defined(CONFIG_XBURST_MXUV2)
+	struct xburst_cop2_state cp2;
 #endif
 	struct mips_abi *abi;
 };
@@ -246,10 +275,13 @@ struct thread_struct {
 #endif /* CONFIG_MIPS_MT_FPAFF */
 
 #ifdef CONFIG_CPU_CAVIUM_OCTEON
-#define OCTEON_INIT						\
+#define COP2_INIT						\
 	.cp2			= INIT_OCTEON_COP2,
+#elif defined(CONFIG_XBURST_MXUV2)
+#define COP2_INIT						\
+	.cp2			= INIT_XBURST_COP2,
 #else
-#define OCTEON_INIT
+#define COP2_INIT
 #endif /* CONFIG_CPU_CAVIUM_OCTEON */
 
 #define INIT_THREAD  {						\
@@ -302,7 +334,7 @@ struct thread_struct {
 	/*							\
 	 * Cavium Octeon specifics (null if not Octeon)		\
 	 */							\
-	OCTEON_INIT						\
+	COP2_INIT						\
 }
 
 struct task_struct;

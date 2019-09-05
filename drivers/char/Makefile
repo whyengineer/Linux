@@ -56,9 +56,25 @@ obj-$(CONFIG_PCMCIA)		+= pcmcia/
 obj-$(CONFIG_HANGCHECK_TIMER)	+= hangcheck-timer.o
 obj-$(CONFIG_TCG_TPM)		+= tpm/
 
+obj-$(CONFIG_DCC_TTY)		+= dcc_tty.o
 obj-$(CONFIG_PS3_FLASH)		+= ps3flash.o
 
 obj-$(CONFIG_JS_RTC)		+= js-rtc.o
+obj-$(CONFIG_JZ_VP)		+= jz_virtual_privilege.o
+obj-$(CONFIG_MTD_NV_WR)	+= mtd_nv_wr.o
+obj-$(CONFIG_MTD_NV_RO)	+= mtd_nv_ro.o
 js-rtc-y = rtc.o
 
 obj-$(CONFIG_TILE_SROM)		+= tile-srom.o
+
+obj-$(CONFIG_JZ_DMIC_V12)	+= voice_wakeup/
+obj-$(CONFIG_JZ_DMIC_V12)	+= jz_dmic.o
+obj-$(CONFIG_JZ_DMIC_WAKEUP) += jz_wakeup.o
+obj-$(CONFIG_TEST_SECOND_REFRESH)	+= second_refresh/
+
+obj-$(CONFIG_WAKEUP_MODULE_V13) += voice_wakeup_v13/
+obj-$(CONFIG_WAKEUP_MODULE_V14) += voice_wakeup_v14/
+obj-$(CONFIG_WAKEUP_MODULE_V14_PIC) += voice_wakeup_v14_PIC/
+obj-$(CONFIG_JZ_DMIC_V13)	+= jz_dmic_v13.o
+obj-$(CONFIG_JZ_DMIC_WAKEUP_V13)	+= jz_wakeup_v13.o
+obj-$(CONFIG_JZ_SCC) += jz_scc.o

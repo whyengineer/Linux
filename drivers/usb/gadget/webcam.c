@@ -380,7 +380,7 @@ error:
 /* --------------------------------------------------------------------------
  * Driver
  */
-
+#ifndef CONFIG_USB_G_ANDROID
 static __refdata struct usb_composite_driver webcam_driver = {
 	.name		= "g_webcam",
 	.dev		= &webcam_device_descriptor,
@@ -409,4 +409,4 @@ MODULE_AUTHOR("Laurent Pinchart");
 MODULE_DESCRIPTION("Webcam Video Gadget");
 MODULE_LICENSE("GPL");
 MODULE_VERSION("0.1.0");
-
+#endif

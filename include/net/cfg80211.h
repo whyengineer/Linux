@@ -2594,6 +2594,8 @@ struct wiphy {
 	/* Supported interface modes, OR together BIT(NL80211_IFTYPE_...) */
 	u16 interface_modes;
 
+	struct cfg80211_wowlan *wowlan_config;
+
 	u16 max_acl_mac_addrs;
 
 	u32 flags, features;

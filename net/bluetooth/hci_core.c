@@ -33,9 +33,21 @@
 #include <net/bluetooth/bluetooth.h>
 #include <net/bluetooth/hci_core.h>
 
+#include <linux/kernel.h>
+#include <linux/init.h>
+#include <linux/module.h>
+#include <linux/syscalls.h>
+#include <linux/fcntl.h>
+#include <asm/uaccess.h>
+
 static void hci_rx_work(struct work_struct *work);
 static void hci_cmd_work(struct work_struct *work);
 static void hci_tx_work(struct work_struct *work);
+
+#define LTKS_CACHE_FILE_NAME "/var/bluetooth/"
+#define MAX_LTK_NUM 32
+static void load_ltks(struct hci_dev *hdev);
+static void save_ltks(struct hci_dev *hdev);
 
 /* HCI device list */
 LIST_HEAD(hci_dev_list);
@@ -1170,6 +1182,7 @@ int hci_dev_open(__u16 dev)
 			mgmt_powered(hdev, 1);
 			hci_dev_unlock(hdev);
 		}
+		load_ltks(hdev);
 	} else {
 		/* Init failed, cleanup */
 		flush_work(&hdev->tx_work);
@@ -1693,10 +1706,62 @@ static bool hci_persistent_key(struct hci_dev *hdev, struct hci_conn *conn,
 	return false;
 }
 
+static void save_ltks(struct hci_dev *hdev)
+{
+	struct smp_ltk *k;
+	int fd, count = 0;
+	mm_segment_t old_fs = get_fs();
+	set_fs(KERNEL_DS);
+	fd = sys_open(LTKS_CACHE_FILE_NAME, O_WRONLY|O_CREAT|O_TRUNC, 0644);
+	if (fd >= 0) {
+		list_for_each_entry(k, &hdev->long_term_keys, list) {
+			sys_write(fd, (void*)k, sizeof(struct smp_ltk));
+			count++;
+			if(count >= MAX_LTK_NUM){
+				break;
+			}
+		}
+		sys_close(fd);
+	}else{
+		printk("failed to create cache file\n");
+	}
+	set_fs(old_fs);
+}
+
+static void load_ltks(struct hci_dev *hdev)
+{
+	struct smp_ltk *key, tmp;
+	int fd, res, count = 0;
+	mm_segment_t old_fs = get_fs();
+	set_fs(KERNEL_DS);
+	fd = sys_open(LTKS_CACHE_FILE_NAME, O_RDONLY, 0);
+	if (fd >= 0) {
+		hci_smp_ltks_clear(hdev);
+		while(1){
+			res = sys_read(fd, (void*)&tmp, sizeof(tmp));
+			if(res == sizeof(tmp)){
+				key = kzalloc(sizeof(*key), GFP_ATOMIC);
+				if(key){
+					memcpy(key, &tmp, sizeof(tmp));
+					list_add_tail(&key->list, &hdev->long_term_keys);
+					count++;
+					if(count >= MAX_LTK_NUM){
+						break;
+					}
+				}
+			}else{
+				break;
+			}
+		}
+	}else{
+		printk("failed to open cache file\n");
+	}
+	set_fs(old_fs);
+}
+
 struct smp_ltk *hci_find_ltk(struct hci_dev *hdev, __le16 ediv, u8 rand[8])
 {
 	struct smp_ltk *k;
-
 	list_for_each_entry(k, &hdev->long_term_keys, list) {
 		if (k->ediv != ediv ||
 		    memcmp(rand, k->rand, sizeof(k->rand)))
@@ -1808,6 +1873,7 @@ int hci_add_ltk(struct hci_dev *hdev, bdaddr_t *bdaddr, u8 addr_type, u8 type,
 	if (type & HCI_SMP_LTK)
 		mgmt_new_ltk(hdev, key, 1);
 
+	save_ltks(hdev);
 	return 0;
 }
 

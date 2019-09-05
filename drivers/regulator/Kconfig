@@ -74,6 +74,13 @@ config REGULATOR_GPIO
 	  and the platform has to provide a mapping of GPIO-states
 	  to target volts/amps.
 
+config REGULATOR_ACT8600
+	depends on MFD_ACT8600
+	tristate "ACT8600 PMU voltage regulator"
+	help
+	  This driver controls PMU ACT8600. It's a mfd cell driver of
+	  act8600-core.c
+
 config REGULATOR_AD5398
 	tristate "Analog Devices AD5398/AD5821 regulators"
 	depends on I2C
@@ -506,6 +513,30 @@ config REGULATOR_WM8994
 	help
 	  This driver provides support for the voltage regulators on the
 	  WM8994 CODEC.
+
+config REGULATOR_SM5007
+	tristate "Siliconmitus SM5007 Power regulators"
+	depends on MFD_SM5007
+	default n
+	help
+	  This driver supports regulator driver for the Siliconmitus SM5007
+	  Power Management device.
+
+config REGULATOR_RN5T567
+	tristate "Ricoh RN5T567 Power regulators"
+	depends on MFD_RICOH619
+	default n
+	help
+	  This driver supports regulator driver for the Ricoh RN5T567
+	  Power Management device.
+
+config REGULATOR_RICOH619
+	tristate "Ricoh R5T619 Power regulators"
+	depends on MFD_RICOH619
+	default n
+	help
+	  This driver supports regulator driver for the Ricoh R5T619
+	  Power Management device.
 
 config REGULATOR_AS3711
 	tristate "AS3711 PMIC"
